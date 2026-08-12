@@ -1,12 +1,9 @@
 /*
  * Surge Metrics Panel
  *
- * This script reads the local iOS Surge HTTP API only. The API key is supplied
- * by the module argument table at runtime; do not add a key to this file.
+ * This script reads the local iOS Surge HTTP API through Surge's built-in
+ * $httpAPI bridge. Local script calls do not require an HTTP API key.
  */
-
-const METRICS_URL = "http://127.0.0.1:6171/v1/metrics";
-const apiKey = String($argument || "").trim();
 
 function formatBytes(value) {
   if (!isFinite(value)) return "未知";
@@ -93,28 +90,21 @@ function doneError(message) {
   });
 }
 
-if (!apiKey) {
-  doneError("未设置 API Key\n\n请在模块的“编辑参数”中填写当前 Surge HTTP API Key。");
-} else {
-  $httpClient.get({
-    url: METRICS_URL,
-    headers: {
-      "Accept": "text/plain; version=0.0.4",
-      "X-Key": apiKey
-    }
-  }, function (error, response, body) {
-    if (error) {
-      doneError("无法读取本机 Metrics\n\n" + String(error));
-      return;
-    }
+function metricsText(result) {
+  if (typeof result === "string") return result;
+  if (!result || typeof result !== "object") return "";
+  if (typeof result.body === "string") return result.body;
+  if (typeof result.data === "string") return result.data;
+  if (typeof result.result === "string") return result.result;
+  return "";
+}
 
-    if (!response || response.status < 200 || response.status >= 300) {
-      doneError("Metrics 请求失败\n\nHTTP " + (response ? response.status : "未知"));
-      return;
-    }
+$httpAPI("GET", "/v1/metrics", null, function (result) {
+    const body = metricsText(result);
 
     if (!body) {
-      doneError("Metrics 返回为空\n\n请确认 iOS Surge 已启用 HTTP API，并运行支持 /v1/metrics 的测试版。");
+      const detail = result && result.error ? "\n\n" + String(result.error) : "";
+      doneError("Metrics 返回为空\n\n请确认当前 Surge iOS 测试版支持 /v1/metrics。" + detail);
       return;
     }
 
@@ -140,5 +130,4 @@ if (!apiKey) {
       ].join("\n\n"),
       style: "info"
     });
-  });
-}
+});

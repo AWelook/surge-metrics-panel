@@ -9,20 +9,12 @@
    `https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/Surge-Metrics-Panel.sgmodule`
 
 2. 打开并启用 `Surge Metrics Panel` 模块。模块会从本仓库的 Raw 地址自动下载脚本，无需手动放置 JS 文件。
-3. 打开模块的“编辑参数”，仅在 `api_key` 中填入 HTTP API Key；不要把 Key 写进 JS 文件，也不要分享模块实例。
+3. 模块通过 Surge 脚本环境内置的 `$httpAPI` 读取本机指标，无需配置或保存 API Key。
 4. 进入策略组页面，轻点面板右上角刷新按钮。
 
 ## 前置条件
 
-当前 iOS 配置必须启用本机 HTTP API，例如：
-
-```ini
-[General]
-http-api = <API_KEY>@127.0.0.1:6171
-http-api-tls = false
-```
-
-脚本只访问 `http://127.0.0.1:6171/v1/metrics`，不会把指标或 Key 发送到外部服务器。
+脚本通过 Surge 内置的 `$httpAPI` 桥接读取 `/v1/metrics`，不会向外部服务器发送指标，也不需要 HTTP API Key。当前 Surge iOS 测试版必须包含 `/v1/metrics` 端点。
 
 ## 说明
 
