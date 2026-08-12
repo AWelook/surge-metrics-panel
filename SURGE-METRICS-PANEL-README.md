@@ -2,6 +2,16 @@
 
 这是本地 Surge iOS 面板模块，显示运行时间、Surge 内存和全部网络接口的累计上传、下载流量。
 
+## API Key 参数版（推荐用于 HTTP API）
+
+安装链接：
+
+`https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/Surge-Monitor-API.sgmodule`
+
+安装或编辑模块时填写 `API_KEY`。该参数只会通过脚本的 `$argument` 传给本机请求头 `X-Key`，不会写入公开的远程 JS 文件。默认刷新间隔为 10 秒，也可通过 `update_interval` 参数修改。
+
+该版本请求 `http://127.0.0.1:6171/v1/metrics`，请先在 Surge 中启用 HTTP API，并使用与 Surge HTTP API 设置一致的 Key。
+
 ## 安装
 
 1. 使用以下 V4 链接在 Surge iOS 中安装模块：
