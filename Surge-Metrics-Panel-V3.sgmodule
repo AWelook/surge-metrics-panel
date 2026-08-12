@@ -1,0 +1,10 @@
+#!name=Surge Metrics Panel V3
+#!desc=显示本机 Surge 的运行时间、内存和接口累计流量。使用无参数的版本化远程脚本 URL，无需 API Key。
+#!system=ios
+#!arguments=update_interval=60
+
+[Panel]
+SurgeMetricsPanelV3 = title="Surge Monitor",content="轻点刷新读取本机指标",style=info,script-name=surge_metrics_panel_v3,update-interval=%update_interval%
+
+[Script]
+surge_metrics_panel_v3 = type=generic,timeout=8,script-path=https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/surge-metrics-panel-v3.js,script-update-interval=3600
