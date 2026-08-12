@@ -4,9 +4,9 @@
 
 ## 安装
 
-1. 使用以下链接在 Surge iOS 中安装模块：
+1. 使用以下 V4 链接在 Surge iOS 中安装模块：
 
-   `https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/Surge-Metrics-Panel.sgmodule`
+   `https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/Surge-Metrics-Panel-V4.sgmodule`
 
 2. 打开并启用 `Surge Metrics Panel` 模块。模块会从本仓库的 Raw 地址自动下载脚本，无需手动放置 JS 文件。
 3. 模块通过 Surge 脚本环境内置的 `$httpAPI` 读取本机指标，无需配置或保存 API Key。
@@ -18,6 +18,6 @@
 
 ## 说明
 
-- `update_interval` 默认为 60 秒。自动刷新只会在策略组页面显示时触发。
+- V4 固定每 60 秒检查刷新，不使用模块参数表。自动刷新只会在策略组页面显示时触发。
 - 流量是接口累计计数，并非“今天的流量”；Surge/系统重启后的归零行为以 `/v1/metrics` 实际输出为准。
 - 该模块需要包含 `/v1/metrics` 的 Surge iOS TestFlight 版本。
