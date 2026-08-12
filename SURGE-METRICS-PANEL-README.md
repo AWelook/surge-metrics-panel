@@ -4,8 +4,11 @@
 
 ## 安装
 
-1. 将 `Surge-Metrics-Panel.sgmodule` 与 `surge-metrics-panel.js` 放入当前 Surge 配置文件所在目录。
-2. 在 Surge iOS 中打开并启用 `Surge Metrics Panel` 模块。
+1. 使用以下链接在 Surge iOS 中安装模块：
+
+   `https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/Surge-Metrics-Panel.sgmodule`
+
+2. 打开并启用 `Surge Metrics Panel` 模块。模块会从本仓库的 Raw 地址自动下载脚本，无需手动放置 JS 文件。
 3. 打开模块的“编辑参数”，仅在 `api_key` 中填入 HTTP API Key；不要把 Key 写进 JS 文件，也不要分享模块实例。
 4. 进入策略组页面，轻点面板右上角刷新按钮。
 
