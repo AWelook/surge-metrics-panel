@@ -6,7 +6,7 @@
 
 安装链接：
 
-`https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/Surge-Monitor-API.sgmodule`
+`https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/Surge-Monitor-iOS-V3.sgmodule`
 
 该版本固定每 10 秒刷新，不需要填写 API Key。脚本通过 Surge 内置的 `$httpAPI` 读取官方 `/v1/traffic` 接口，不会通过 `127.0.0.1:6171` 发起需要鉴权的外部 HTTP 请求。
 
