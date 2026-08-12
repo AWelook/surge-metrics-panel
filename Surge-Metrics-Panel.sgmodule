@@ -1,0 +1,10 @@
+#!name=Surge Metrics Panel
+#!desc=在策略组页面显示本机 Surge 的运行时间、内存和接口累计流量。需要先在当前 iOS Surge 配置中启用 http-api，并在模块参数中填写 API Key。
+#!system=ios
+#!arguments=api_key=&update_interval=60
+
+[Panel]
+SurgeMetricsPanel = title="Surge Monitor",content="轻点刷新读取本机指标",style=info,script-name=surge_metrics_panel,update-interval=%update_interval%
+
+[Script]
+surge_metrics_panel = type=generic,timeout=8,script-path=surge-metrics-panel.js,argument=%api_key%
