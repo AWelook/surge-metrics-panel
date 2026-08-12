@@ -1,14 +1,11 @@
 /*
  * Surge Monitor API
  *
- * The module passes the local Surge HTTP API key through $argument.
- * The key is never stored in this remote script.
+ * Reads metrics through Surge's built-in $httpAPI bridge. Calls made through
+ * this bridge do not require the external HTTP API key.
  *
- * API: GET http://127.0.0.1:6171/v1/metrics
+ * API: GET /v1/metrics
  */
-
-const METRICS_URL = "http://127.0.0.1:6171/v1/metrics";
-const API_KEY = typeof $argument === "string" ? $argument.trim() : "";
 
 function isFiniteNumber(value) {
     return isFinite(Number(value));
@@ -148,104 +145,81 @@ function finishPanel(title, content, style, icon, iconColor) {
     $done(result);
 }
 
-if (!API_KEY) {
+function metricsText(result) {
+    if (typeof result === "string") {
+        return result;
+    }
+    if (!result || typeof result !== "object") {
+        return "";
+    }
+    if (typeof result.body === "string") {
+        return result.body;
+    }
+    if (typeof result.data === "string") {
+        return result.data;
+    }
+    if (typeof result.result === "string") {
+        return result.result;
+    }
+    return "";
+}
+
+$httpAPI("GET", "/v1/metrics", null, function (result) {
+    const body = metricsText(result);
+
+    if (!body) {
+        const detail = result && result.error
+            ? "\n\n" + String(result.error)
+            : "";
+        finishPanel(
+            "Surge Monitor",
+            "Metrics 返回为空\n\n请确认当前 Surge 版本支持 /v1/metrics。" + detail,
+            "error",
+            "exclamationmark.triangle.fill",
+            "#FF3B30"
+        );
+        return;
+    }
+
+    const metrics = parseMetrics(body);
+    const buildInfo = getMetric(metrics, "surge_build_info");
+    const uptime = getMetric(metrics, "surge_uptime_seconds");
+    const memory = getMetric(metrics, "surge_memory_bytes");
+
+    const version = buildInfo && buildInfo.labels.version
+        ? buildInfo.labels.version
+        : "未知";
+    const build = buildInfo && buildInfo.labels.build
+        ? buildInfo.labels.build
+        : "未知";
+    const system = buildInfo && buildInfo.labels.system
+        ? buildInfo.labels.system
+        : "未知";
+
+    const download = sumMetrics(
+        metrics,
+        "surge_interface_in_bytes_total"
+    );
+    const upload = sumMetrics(
+        metrics,
+        "surge_interface_out_bytes_total"
+    );
+
+    const content = [
+        "内存占用：  " + formatBytes(memory ? memory.value : NaN),
+        "",
+        "运行时间：  " + formatUptime(uptime ? uptime.value : NaN),
+        "",
+        "↓ " + formatBytes(download) + "     ↑ " + formatBytes(upload),
+        "",
+        "Surge " + version + " · Build " + build + " · " + system
+    ].join("\n");
+
     finishPanel(
         "Surge Monitor",
-        "未设置 API Key\n\n请打开模块参数并填写 Surge HTTP API Key。",
-        "error",
-        "key.fill",
-        "#FF9500"
+        content,
+        null,
+        "chart.bar.xaxis",
+        "#4A90E2"
     );
-} else {
-    $httpClient.get(
-        {
-            url: METRICS_URL,
-            headers: {
-                Accept: "text/plain",
-                "X-Key": API_KEY
-            }
-        },
-        function (error, response, body) {
-            if (error) {
-                finishPanel(
-                    "Surge Monitor",
-                    "无法获取 Metrics\n\n" + String(error),
-                    "error",
-                    "exclamationmark.triangle.fill",
-                    "#FF3B30"
-                );
-                return;
-            }
-
-            const status = response && Number(
-                response.status || response.statusCode
-            );
-            if (status && (status < 200 || status >= 300)) {
-                const hint = status === 401 || status === 403
-                    ? "\n\n请检查模块中的 API Key。"
-                    : "";
-                finishPanel(
-                    "Surge Monitor",
-                    "Metrics 请求失败\n\nHTTP " + status + hint,
-                    "error",
-                    "exclamationmark.triangle.fill",
-                    "#FF3B30"
-                );
-                return;
-            }
-
-            if (!body) {
-                finishPanel(
-                    "Surge Monitor",
-                    "Metrics 返回为空",
-                    "error",
-                    "exclamationmark.triangle.fill",
-                    "#FF3B30"
-                );
-                return;
-            }
-
-            const metrics = parseMetrics(body);
-            const buildInfo = getMetric(metrics, "surge_build_info");
-            const uptime = getMetric(metrics, "surge_uptime_seconds");
-            const memory = getMetric(metrics, "surge_memory_bytes");
-
-            const version = buildInfo && buildInfo.labels.version
-                ? buildInfo.labels.version
-                : "未知";
-            const build = buildInfo && buildInfo.labels.build
-                ? buildInfo.labels.build
-                : "未知";
-            const system = buildInfo && buildInfo.labels.system
-                ? buildInfo.labels.system
-                : "未知";
-
-            const download = sumMetrics(
-                metrics,
-                "surge_interface_in_bytes_total"
-            );
-            const upload = sumMetrics(
-                metrics,
-                "surge_interface_out_bytes_total"
-            );
-
-            const content = [
-                "内存占用：  " + formatBytes(memory ? memory.value : NaN),
-                "",
-                "运行时间：  " + formatUptime(uptime ? uptime.value : NaN),
-                "",
-                "↓ " + formatBytes(download) + "     ↑ " + formatBytes(upload),
-                "",
-                "Surge " + version + " · Build " + build + " · " + system
-            ].join("\n");
-
-            finishPanel(
-                "Surge Monitor",
-                content,
-                null,
-                "chart.bar.xaxis",
-                "#4A90E2"
-            );
-        }
-    );
-}
+});
