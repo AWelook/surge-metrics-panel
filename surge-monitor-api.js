@@ -1,10 +1,8 @@
 /*
- * Surge Monitor API
+ * Surge Monitor iOS
  *
- * Reads metrics through Surge's built-in $httpAPI bridge. Calls made through
- * this bridge do not require the external HTTP API key.
- *
- * API: GET /v1/metrics
+ * Uses Surge's documented /v1/traffic API through the built-in $httpAPI
+ * bridge. No external HTTP API key is required.
  */
 
 function isFiniteNumber(value) {
@@ -28,12 +26,20 @@ function formatBytes(value) {
     return bytes.toFixed(2) + " " + units[unitIndex];
 }
 
-function formatUptime(value) {
-    if (!isFiniteNumber(value)) {
+function formatSpeed(value) {
+    const formatted = formatBytes(value);
+    return formatted === "—" ? formatted : formatted + "/s";
+}
+
+function formatUptime(startTime) {
+    if (!isFiniteNumber(startTime)) {
         return "—";
     }
 
-    let seconds = Math.max(0, Math.floor(Number(value)));
+    let seconds = Math.max(
+        0,
+        Math.floor((Date.now() - Number(startTime) * 1000) / 1000)
+    );
     const days = Math.floor(seconds / 86400);
     seconds -= days * 86400;
 
@@ -60,70 +66,46 @@ function formatUptime(value) {
     return parts.join(" ");
 }
 
-function parseMetrics(text) {
-    const metrics = [];
-    const lines = String(text).split(/\r?\n/);
-    const metricPattern =
-        /^([a-zA-Z_:][a-zA-Z0-9_:]*)(?:\{([^}]*)\})?\s+([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)$/;
-    const labelPattern =
-        /([a-zA-Z_][a-zA-Z0-9_]*)="((?:\\.|[^"])*)"/g;
+function sumInterfaces(interfaces) {
+    const totals = {
+        download: 0,
+        upload: 0,
+        downloadSpeed: 0,
+        uploadSpeed: 0,
+        found: false
+    };
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line || line.charAt(0) === "#") {
-            continue;
-        }
-
-        const match = line.match(metricPattern);
-        if (!match) {
-            continue;
-        }
-
-        const labels = {};
-        const labelText = match[2] || "";
-        let labelMatch;
-
-        labelPattern.lastIndex = 0;
-        while ((labelMatch = labelPattern.exec(labelText)) !== null) {
-            labels[labelMatch[1]] = labelMatch[2]
-                .replace(/\\"/g, '"')
-                .replace(/\\\\/g, "\\");
-        }
-
-        metrics.push({
-            name: match[1],
-            labels: labels,
-            value: Number(match[3])
-        });
+    if (!interfaces || typeof interfaces !== "object") {
+        return totals;
     }
 
-    return metrics;
-}
-
-function getMetric(metrics, metricName) {
-    for (let i = 0; i < metrics.length; i++) {
-        if (metrics[i].name === metricName) {
-            return metrics[i];
+    Object.keys(interfaces).forEach(function (name) {
+        if (name === "lo0") {
+            return;
         }
-    }
-    return null;
-}
 
-function sumMetrics(metrics, metricName) {
-    let total = 0;
-    let found = false;
-
-    for (let i = 0; i < metrics.length; i++) {
-        if (
-            metrics[i].name === metricName &&
-            isFiniteNumber(metrics[i].value)
-        ) {
-            total += Number(metrics[i].value);
-            found = true;
+        const item = interfaces[name];
+        if (!item || typeof item !== "object") {
+            return;
         }
-    }
 
-    return found ? total : NaN;
+        if (isFiniteNumber(item.in)) {
+            totals.download += Number(item.in);
+            totals.found = true;
+        }
+        if (isFiniteNumber(item.out)) {
+            totals.upload += Number(item.out);
+            totals.found = true;
+        }
+        if (isFiniteNumber(item.inCurrentSpeed)) {
+            totals.downloadSpeed += Number(item.inCurrentSpeed);
+        }
+        if (isFiniteNumber(item.outCurrentSpeed)) {
+            totals.uploadSpeed += Number(item.outCurrentSpeed);
+        }
+    });
+
+    return totals;
 }
 
 function finishPanel(title, content, style, icon, iconColor) {
@@ -145,35 +127,11 @@ function finishPanel(title, content, style, icon, iconColor) {
     $done(result);
 }
 
-function metricsText(result) {
-    if (typeof result === "string") {
-        return result;
-    }
-    if (!result || typeof result !== "object") {
-        return "";
-    }
-    if (typeof result.body === "string") {
-        return result.body;
-    }
-    if (typeof result.data === "string") {
-        return result.data;
-    }
-    if (typeof result.result === "string") {
-        return result.result;
-    }
-    return "";
-}
-
-$httpAPI("GET", "/v1/metrics", null, function (result) {
-    const body = metricsText(result);
-
-    if (!body) {
-        const detail = result && result.error
-            ? "\n\n" + String(result.error)
-            : "";
+$httpAPI("GET", "/v1/traffic", null, function (traffic) {
+    if (!traffic || typeof traffic !== "object") {
         finishPanel(
             "Surge Monitor",
-            "Metrics 返回为空\n\n请确认当前 Surge 版本支持 /v1/metrics。" + detail,
+            "无法读取流量信息\n\n/v1/traffic 返回为空。",
             "error",
             "exclamationmark.triangle.fill",
             "#FF3B30"
@@ -181,36 +139,33 @@ $httpAPI("GET", "/v1/metrics", null, function (result) {
         return;
     }
 
-    const metrics = parseMetrics(body);
-    const buildInfo = getMetric(metrics, "surge_build_info");
-    const uptime = getMetric(metrics, "surge_uptime_seconds");
-    const memory = getMetric(metrics, "surge_memory_bytes");
+    const totals = sumInterfaces(traffic.interface);
+    if (!totals.found) {
+        finishPanel(
+            "Surge Monitor",
+            "暂未取得网络接口数据\n\n请稍后轻点刷新。",
+            "error",
+            "exclamationmark.triangle.fill",
+            "#FF9500"
+        );
+        return;
+    }
 
-    const version = buildInfo && buildInfo.labels.version
-        ? buildInfo.labels.version
-        : "未知";
-    const build = buildInfo && buildInfo.labels.build
-        ? buildInfo.labels.build
-        : "未知";
-    const system = buildInfo && buildInfo.labels.system
-        ? buildInfo.labels.system
-        : "未知";
-
-    const download = sumMetrics(
-        metrics,
-        "surge_interface_in_bytes_total"
-    );
-    const upload = sumMetrics(
-        metrics,
-        "surge_interface_out_bytes_total"
-    );
+    const environment = typeof $environment === "object"
+        ? $environment
+        : {};
+    const version = environment["surge-version"] || "未知版本";
+    const build = environment["surge-build"] || "未知";
+    const system = environment.system || "iOS";
 
     const content = [
-        "内存占用：  " + formatBytes(memory ? memory.value : NaN),
+        "运行时间：  " + formatUptime(traffic.startTime),
         "",
-        "运行时间：  " + formatUptime(uptime ? uptime.value : NaN),
+        "累计流量：  ↓ " + formatBytes(totals.download) +
+            "     ↑ " + formatBytes(totals.upload),
         "",
-        "↓ " + formatBytes(download) + "     ↑ " + formatBytes(upload),
+        "当前速度：  ↓ " + formatSpeed(totals.downloadSpeed) +
+            "     ↑ " + formatSpeed(totals.uploadSpeed),
         "",
         "Surge " + version + " · Build " + build + " · " + system
     ].join("\n");

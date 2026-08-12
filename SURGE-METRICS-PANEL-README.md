@@ -1,6 +1,6 @@
 # Surge Metrics Panel
 
-这是本地 Surge iOS 面板模块，显示运行时间、Surge 内存和全部网络接口的累计上传、下载流量。
+这是本地 Surge iOS 面板模块，显示运行时间、累计上传下载、实时速度和 Surge 版本。
 
 ## iOS 免 Key 版本（推荐）
 
@@ -8,9 +8,9 @@
 
 `https://raw.githubusercontent.com/AWelook/surge-metrics-panel/main/Surge-Monitor-API.sgmodule`
 
-该版本固定每 10 秒刷新，不需要填写 API Key。脚本通过 Surge 内置的 `$httpAPI` 读取 `/v1/metrics`，不会通过 `127.0.0.1:6171` 发起需要鉴权的外部 HTTP 请求。
+该版本固定每 10 秒刷新，不需要填写 API Key。脚本通过 Surge 内置的 `$httpAPI` 读取官方 `/v1/traffic` 接口，不会通过 `127.0.0.1:6171` 发起需要鉴权的外部 HTTP 请求。
 
-旧参数版在 iOS 上可能因为模块参数没有被替换而造成连续未授权请求；请重新安装以上链接以升级。
+`/v1/traffic` 不提供内存占用，因此稳定版不再显示内存。旧参数版在 iOS 上可能造成连续未授权请求，旧 `/v1/metrics` 版也可能返回空；请重新安装以上链接升级。
 
 ## 安装
 
